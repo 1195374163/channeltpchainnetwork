@@ -1,1 +1,0 @@
-Abstractions over [Netty](https://netty.io/), used in the [Babel](https://github.com/pfouto/babel-core) project.
