@@ -179,7 +179,7 @@ public class TCPChannel<T> extends SingleThreadedBiChannel<T, T> implements Attr
         int hbTolerance = Integer.parseInt(properties.getProperty(HEARTBEAT_TOLERANCE_KEY, DEFAULT_HB_TOLERANCE));
         int connTimeout = Integer.parseInt(properties.getProperty(CONNECT_TIMEOUT_KEY, DEFAULT_CONNECT_TIMEOUT));
         int metricsInterval = Integer.parseInt(properties.getProperty(METRICS_INTERVAL_KEY, DEFAULT_METRICS_INTERVAL));
-        this.triggerSent = Boolean.parseBoolean(properties.getProperty(TRIGGER_SENT_KEY, "true"));
+        this.triggerSent = Boolean.parseBoolean(properties.getProperty(TRIGGER_SENT_KEY, "false"));
         this.metrics = metricsInterval > 0;
         
 
@@ -257,6 +257,7 @@ public class TCPChannel<T> extends SingleThreadedBiChannel<T, T> implements Attr
                 conState.getConnection().disconnect();
             }
         }
+        //outConnections.remove(peer);
     }
 
 
@@ -298,10 +299,12 @@ public class TCPChannel<T> extends SingleThreadedBiChannel<T, T> implements Attr
             if (conState != null) {
                 if (conState.getState() == ConnectionState.State.CONNECTING || conState.getState() == ConnectionState.State.DISCONNECTING_RECONNECT) {
                     conState.getQueue().add(msg);
+                    //listener.messageFailed(msg, peer, new IllegalArgumentException("this connection is CONNECTING  or  DISCONNECTING_RECONNECT"));
                 } else if (conState.getState() == ConnectionState.State.CONNECTED) {
                     sendWithListener(msg, peer, conState.getConnection());
                 } else if (conState.getState() == ConnectionState.State.DISCONNECTING) {
                     conState.getQueue().add(msg);
+                    //listener.messageFailed(msg, peer, new IllegalArgumentException("this connection is disconnecting"));
                     conState.setState(ConnectionState.State.DISCONNECTING_RECONNECT);
                 }
             } else
@@ -318,7 +321,7 @@ public class TCPChannel<T> extends SingleThreadedBiChannel<T, T> implements Attr
             logger.error("Invalid sendMessage mode " + connection);
         }
     }
-
+    
     private void sendWithListener(T msg, Host peer, Connection<T> established) {
         Promise<Void> promise = loop.newPromise();
         promise.addListener(future -> {
@@ -355,6 +358,7 @@ public class TCPChannel<T> extends SingleThreadedBiChannel<T, T> implements Attr
     protected void onOutboundConnectionDown(Connection<T> conn, Throwable cause) {
         if (logger.isDebugEnabled())
             logger.debug("OutboundConnectionDown " + conn.getPeer() + (cause != null ? (" " + cause) : ""));
+        // 移除
         ConnectionState<T> conState = outConnections.remove(conn.getPeer());
         if (conState == null) {
             throw new AssertionError("ConnectionDown with no conState: " + conn);
@@ -376,7 +380,7 @@ public class TCPChannel<T> extends SingleThreadedBiChannel<T, T> implements Attr
     protected void onOutboundConnectionFailed(Connection<T> conn, Throwable cause) {
         if (logger.isDebugEnabled())
             logger.debug("OutboundConnectionFailed " + conn.getPeer() + (cause != null ? (" " + cause) : ""));
-
+        // 已经移除此连接
         ConnectionState<T> conState = outConnections.remove(conn.getPeer());
         if (conState == null) {
             throw new AssertionError("ConnectionFailed with no conState: " + conn);
